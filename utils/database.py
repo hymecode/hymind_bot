@@ -59,3 +59,31 @@ def create_user(user_id, username, first_name):
     conn.close()
 
 
+def init_db():
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # ... oldingi jadvallar ...
+    
+    # YANGI: Musiqalar jadvali
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS songs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            file_id TEXT NOT NULL,
+            caption TEXT,
+            file_type TEXT,  -- audio, voice, document
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    
+    # YANGI: So'zlar jadvali
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS words (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            content TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    
+    conn.commit()
+    conn.close()

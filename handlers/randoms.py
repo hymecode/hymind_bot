@@ -1,6 +1,7 @@
 from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
+from utils.database import get_db
 import random
 
 router = Router()
@@ -15,7 +16,6 @@ class RandomState(StatesGroup):
 async def randoms_menu(message: types.Message, state: FSMContext):
     user_id = message.from_user.id
     
-    # Sessiyani tozalash (yangi kirishda)
     if user_id in user_sessions:
         user_sessions[user_id]['played_songs'] = []
         user_sessions[user_id]['played_words'] = []
@@ -39,11 +39,11 @@ async def randoms_menu(message: types.Message, state: FSMContext):
     await message.answer(
         "🎲 **Randoms** bo'limi\n\n"
         "Quyidagi tugmalardan birini tanlang:\n"
-        "🎵 - Guruhdagi musiqalardan random 1 tasi\n"
-        "📝 - Guruhdagi so'zlardan random 1 tasi\n\n"
+        "🎵 - Bazadagi musiqalardan random 1 tasi\n"
+        "📝 - Bazadagi so'zlardan random 1 tasi\n\n"
         "⚠️ Har safar oldingi tanlanganlardan tashqari random tanlanadi.\n"
         "🔄 Barchasi tanlanganda qayta boshlanadi.\n"
-        "🔙 Asosiy menyuga qaytsangiz, ro'yxat tozalanadi.",
+        "🔙 Asosiy menyuga qaysangiz, ro'yxat tozalanadi.",
         reply_markup=keyboard,
         parse_mode="Markdown"
     )
@@ -51,124 +51,106 @@ async def randoms_menu(message: types.Message, state: FSMContext):
 @router.message(RandomState.active, F.text == "🎵 Random Song")
 async def random_song(message: types.Message, state: FSMContext):
     user_id = message.from_user.id
-    CHAT_ID = -1003863295329  # YOPIQ GURUH ID'SI (o'zingiznikiga almashtiring!)
     
+    # Bazadan barcha musiqalarni olish
+    conn = get_db()
+    all_songs = conn.execute("SELECT * FROM songs ORDER BY id").fetchall()
+    conn.close()
+    
+    if not all_songs:
+        await message.answer("❌ Bazada hech qanday musiqa yo'q!\nAdmin musiqa qo'shsin.")
+        return
+    
+    if user_id not in user_sessions:
+        user_sessions[user_id] = {'played_songs': [], 'played_words': []}
+    
+    played = user_sessions[user_id]['played_songs']
+    
+    # Tanlanmaganlarni topish
+    available = [song for song in all_songs if song['id'] not in played]
+    
+    if not available:
+        user_sessions[user_id]['played_songs'] = []
+        played = []
+        available = all_songs.copy()
+        await message.answer(
+            "🔄 **Barcha musiqalarni eshitdingiz!**\n"
+            "Qayta random boshlanadi...",
+            parse_mode="Markdown"
+        )
+    
+    # Random tanlash
+    selected = random.choice(available)
+    played.append(selected['id'])
+    user_sessions[user_id]['played_songs'] = played
+    
+    # Yuborish
     try:
-        # Guruhdagi barcha musiqalarni olish
-        all_songs = []
-        async for msg in message.bot.get_chat_history(CHAT_ID, limit=100):
-            if msg.audio or msg.voice or msg.document:
-                all_songs.append(msg)
-        
-        if not all_songs:
-            await message.answer("❌ Guruhda hech qanday musiqa topilmadi!")
-            return
-        
-        # Sessiyani tekshirish
-        if user_id not in user_sessions:
-            user_sessions[user_id] = {'played_songs': [], 'played_words': []}
-        
-        played = user_sessions[user_id]['played_songs']
-        
-        # Tanlanmagan musiqalarni topish
-        available = [msg for msg in all_songs if msg.message_id not in played]
-        
-        # Agar barchasi tanlangan bo'lsa
-        if not available:
-            user_sessions[user_id]['played_songs'] = []
-            played = []
-            available = all_songs.copy()
-            await message.answer(
-                "🔄 **Barcha musiqalarni eshitdingiz!**\n"
-                "Qayta random boshlanadi...",
-                parse_mode="Markdown"
-            )
-        
-        # Random tanlash
-        selected = random.choice(available)
-        played.append(selected.message_id)
-        user_sessions[user_id]['played_songs'] = played
-        
-        # Yuborish
-        if selected.audio:
+        if selected['file_type'] == 'audio':
             await message.answer_audio(
-                audio=selected.audio.file_id,
-                caption=f"🎵 {selected.caption or 'Navbatdagi qo\'shiq'}\n"
+                audio=selected['file_id'],
+                caption=f"🎵 {selected['caption'] or 'Navbatdagi qo\'shiq'}\n"
                         f"📊 Eshitilgan: {len(played)}/{len(all_songs)}"
             )
-        elif selected.voice:
+        elif selected['file_type'] == 'voice':
             await message.answer_voice(
-                voice=selected.voice.file_id,
+                voice=selected['file_id'],
                 caption=f"🎵 Ovozli xabar\n📊 Eshitilgan: {len(played)}/{len(all_songs)}"
             )
-        elif selected.document:
+        elif selected['file_type'] == 'document':
             await message.answer_document(
-                document=selected.document.file_id,
-                caption=f"📄 {selected.caption or 'Musiqa fayli'}\n"
+                document=selected['file_id'],
+                caption=f"📄 {selected['caption'] or 'Musiqa fayli'}\n"
                         f"📊 Eshitilgan: {len(played)}/{len(all_songs)}"
             )
-        
     except Exception as e:
-        await message.answer(f"❌ Xatolik: {e}\nQayta urinib ko'ring.")
+        await message.answer(f"❌ Xatolik: {e}")
 
 @router.message(RandomState.active, F.text == "📝 Random Words")
 async def random_words(message: types.Message, state: FSMContext):
     user_id = message.from_user.id
-    CHAT_ID = -1001234567890  # YOPIQ GURUH ID'SI (o'zingiznikiga almashtiring!)
     
-    try:
-        # Guruhdagi barcha matnli xabarlarni olish
-        all_words = []
-        async for msg in message.bot.get_chat_history(CHAT_ID, limit=100):
-            if msg.text or msg.caption:
-                all_words.append(msg)
-        
-        if not all_words:
-            await message.answer("❌ Guruhda hech qanday so'z topilmadi!")
-            return
-        
-        # Sessiyani tekshirish
-        if user_id not in user_sessions:
-            user_sessions[user_id] = {'played_songs': [], 'played_words': []}
-        
-        played = user_sessions[user_id]['played_words']
-        
-        # Tanlanmagan so'zlarni topish
-        available = [msg for msg in all_words if msg.message_id not in played]
-        
-        # Agar barchasi tanlangan bo'lsa
-        if not available:
-            user_sessions[user_id]['played_words'] = []
-            played = []
-            available = all_words.copy()
-            await message.answer(
-                "🔄 **Barcha so'zlarni ko'rib chiqdingiz!**\n"
-                "Qayta random boshlanadi...",
-                parse_mode="Markdown"
-            )
-        
-        # Random tanlash
-        selected = random.choice(available)
-        played.append(selected.message_id)
-        user_sessions[user_id]['played_words'] = played
-        
-        # Yuborish
-        content = selected.text or selected.caption or "So'z topilmadi"
+    # Bazadan barcha so'zlarni olish
+    conn = get_db()
+    all_words = conn.execute("SELECT * FROM words ORDER BY id").fetchall()
+    conn.close()
+    
+    if not all_words:
+        await message.answer("❌ Bazada hech qanday so'z yo'q!\nAdmin so'z qo'shsin.")
+        return
+    
+    if user_id not in user_sessions:
+        user_sessions[user_id] = {'played_songs': [], 'played_words': []}
+    
+    played = user_sessions[user_id]['played_words']
+    
+    available = [word for word in all_words if word['id'] not in played]
+    
+    if not available:
+        user_sessions[user_id]['played_words'] = []
+        played = []
+        available = all_words.copy()
         await message.answer(
-            f"📝 **Navbatdagi random so'z**\n"
-            f"📊 Ko'rilgan: {len(played)}/{len(all_words)}\n\n"
-            f"{content}",
+            "🔄 **Barcha so'zlarni ko'rib chiqdingiz!**\n"
+            "Qayta random boshlanadi...",
             parse_mode="Markdown"
         )
-        
-    except Exception as e:
-        await message.answer(f"❌ Xatolik: {e}\nQayta urinib ko'ring.")
+    
+    selected = random.choice(available)
+    played.append(selected['id'])
+    user_sessions[user_id]['played_words'] = played
+    
+    await message.answer(
+        f"📝 **Navbatdagi random so'z**\n"
+        f"📊 Ko'rilgan: {len(played)}/{len(all_words)}\n\n"
+        f"{selected['content']}",
+        parse_mode="Markdown"
+    )
 
 @router.message(RandomState.active, F.text == "🔙 Asosiy menyu")
 async def back_to_main_randoms(message: types.Message, state: FSMContext):
     user_id = message.from_user.id
     
-    # Sessiyani tozalash
     if user_id in user_sessions:
         user_sessions[user_id]['played_songs'] = []
         user_sessions[user_id]['played_words'] = []
