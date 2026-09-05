@@ -9,3 +9,7 @@ if not BOT_TOKEN:
 
 # Admin ID lari (o'zingiz va ishonchli odamlarniki)
 ADMIN_IDS = [8896470319]  # O'ZINGIZNING TELEGRAM ID'NGIZNI YOZING!
+
+ADMIN_USERNAME = "@hymecode"  # @ belgisiz
+DONATE_CARD = "6262570191961988"  # Karta raqami
+OFFERS_CHAT_ID = -1004359574809 # Takliflar uchun yopiq guruh ID

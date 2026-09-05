@@ -5,6 +5,8 @@ def setup_handlers(dp: Dispatcher):
     from .translate import router as translate_router
     from .randoms import router as randoms_router
     from .admin import router as admin_router
+    from .support import router as support_router
+
     # from .pomodoro import router as pomodoro_router   # keyin
     # from .premium import router as premium_router     # keyin
     # from .promo import router as promo_router         # keyin
@@ -14,6 +16,7 @@ def setup_handlers(dp: Dispatcher):
     dp.include_router(translate_router)
     dp.include_router(randoms_router)
     dp.include_router(admin_router)
+    dp.include_router(support_router)
     # dp.include_router(pomodoro_router)   # keyin
     # dp.include_router(premium_router)    # keyin
     # dp.include_router(promo_router)      # keyin
