@@ -12,8 +12,6 @@ def get_db():
 def init_db():
     conn = get_db()
     cursor = conn.cursor()
-    
-    # Foydalanuvchilar jadvali
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             user_id INTEGER PRIMARY KEY,
@@ -23,8 +21,6 @@ def init_db():
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    
-    # Promo-kodlar jadvali
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS promo_codes (
             code TEXT PRIMARY KEY,
@@ -34,8 +30,6 @@ def init_db():
             expires_at TEXT
         )
     """)
-    
-    # Promo-kod ishlatish tarixi
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS promo_usage (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -46,7 +40,6 @@ def init_db():
             FOREIGN KEY (code) REFERENCES promo_codes(code)
         )
     """)
-    
     conn.commit()
     conn.close()
 
@@ -65,15 +58,47 @@ def create_user(user_id, username, first_name):
     conn.commit()
     conn.close()
 
-def is_premium(user_id):
-    user = get_user(user_id)
-    if not user or not user["premium_until"]:
-        return False
-    premium_until = datetime.fromisoformat(user["premium_until"])
-    return premium_until > datetime.now()
 
-def get_premium_until(user_id):
-    user = get_user(user_id)
-    if not user or not user["premium_until"]:
-        return None
-    return datetime.fromisoformat(user["premium_until"])
+def init_db():
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Foydalanuvchilar
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            user_id INTEGER PRIMARY KEY,
+            username TEXT,
+            first_name TEXT,
+            premium_until TEXT,
+            pomodoro_cycles INTEGER DEFAULT 0,
+            total_pomodoro_minutes INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    
+    # Promo-kodlar
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS promo_codes (
+            code TEXT PRIMARY KEY,
+            bonus_days INTEGER,
+            max_uses INTEGER DEFAULT 1,
+            used_count INTEGER DEFAULT 0,
+            expires_at TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    
+    # Promo-kod ishlatish tarixi
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS promo_usage (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            code TEXT,
+            used_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(user_id),
+            FOREIGN KEY (code) REFERENCES promo_codes(code)
+        )
+    """)
+    
+    conn.commit()
+    conn.close()

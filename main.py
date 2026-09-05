@@ -5,14 +5,10 @@ from config import BOT_TOKEN
 from utils.database import init_db
 from handlers import setup_handlers
 
-# Bot va Dispatcher
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
 
-# Ma'lumotlar bazasini yaratish
 init_db()
-
-# Handlerlarni o'rnatish
 setup_handlers(dp)
 
 async def main():

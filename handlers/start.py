@@ -1,14 +1,12 @@
 from aiogram import Router, types
 from aiogram.filters import Command
 from keyboards.main import get_main_keyboard
+from utils.database import create_user, get_user
 
 router = Router()
 
 @router.message(Command("start"))
 async def cmd_start(message: types.Message):
-    from utils.database import create_user, get_user
-    
-    # Foydalanuvchini bazaga qo'shish
     user = get_user(message.from_user.id)
     if not user:
         create_user(
@@ -16,7 +14,6 @@ async def cmd_start(message: types.Message):
             message.from_user.username,
             message.from_user.first_name
         )
-    
     await message.answer(
         "🧠 **HyMind** botiga xush kelibsiz!\n\n"
         "Men sizning ongingizni rivojlantirishga yordam beraman.\n"
