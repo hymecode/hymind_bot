@@ -1,6 +1,6 @@
 import sqlite3
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Railway'da volume yo'li, yo'q bo'lsa lokal papka
 if os.path.exists("/data"):
@@ -54,7 +54,7 @@ def init_db():
         )
     """)
     
-    # YANGI: Musiqalar
+    # Musiqalar
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS songs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -65,7 +65,7 @@ def init_db():
         )
     """)
     
-    # YANGI: So'zlar
+    # So'zlar
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS words (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -74,5 +74,70 @@ def init_db():
         )
     """)
     
+    conn.commit()
+    conn.close()
+
+def get_user(user_id):
+    conn = get_db()
+    user = conn.execute("SELECT * FROM users WHERE user_id = ?", (user_id,)).fetchone()
+    conn.close()
+    return user
+
+def create_user(user_id, username, first_name):
+    conn = get_db()
+    conn.execute(
+        "INSERT OR IGNORE INTO users (user_id, username, first_name) VALUES (?, ?, ?)",
+        (user_id, username, first_name)
+    )
+    conn.commit()
+    conn.close()
+
+def get_premium_until(user_id):
+    conn = get_db()
+    result = conn.execute(
+        "SELECT premium_until FROM users WHERE user_id = ?",
+        (user_id,)
+    ).fetchone()
+    conn.close()
+    if result and result["premium_until"]:
+        return datetime.fromisoformat(result["premium_until"])
+    return None
+
+def is_premium(user_id):
+    premium_until = get_premium_until(user_id)
+    if not premium_until:
+        return False
+    return premium_until > datetime.now()
+
+def get_premium_days_left(user_id):
+    premium_until = get_premium_until(user_id)
+    if not premium_until:
+        return 0
+    delta = premium_until - datetime.now()
+    return max(0, delta.days)
+
+def extend_premium(user_id, days):
+    conn = get_db()
+    current = get_premium_until(user_id)
+    
+    if current and current > datetime.now():
+        new_date = current + timedelta(days=days)
+    else:
+        new_date = datetime.now() + timedelta(days=days)
+    
+    conn.execute(
+        "UPDATE users SET premium_until = ? WHERE user_id = ?",
+        (new_date.isoformat(), user_id)
+    )
+    conn.commit()
+    conn.close()
+    return new_date
+
+def update_pomodoro_stats(user_id, cycles=1):
+    conn = get_db()
+    conn.execute(
+        "UPDATE users SET pomodoro_cycles = pomodoro_cycles + ?, total_pomodoro_minutes = total_pomodoro_minutes + ? WHERE user_id = ?",
+        (cycles, cycles * 25, user_id)
+    )
     conn.commit()
     conn.close()
