@@ -1,10 +1,11 @@
 from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from deep_translator import GoogleTranslator
+from googletrans import Translator
 from keyboards.translate import get_translate_keyboard, get_back_keyboard
 
 router = Router()
+translator = Translator()
 
 # FSM holati
 class TranslateState(StatesGroup):
@@ -44,10 +45,10 @@ async def translate_text(message: types.Message, state: FSMContext):
     
     try:
         if direction == "en-uz":
-            result = GoogleTranslator(source='en', target='uz').translate(text)
+            result = translator.translate(text, src='en', dest='uz')
         else:
-            result = GoogleTranslator(source='uz', target='en').translate(text)
-        await message.answer(f"🔹 **Tarjima:**\n{result}", parse_mode="Markdown")
+            result = translator.translate(text, src='uz', dest='en')
+        await message.answer(f"🔹 **Tarjima:**\n{result.text}", parse_mode="Markdown")
     except Exception as e:
         await message.answer(f"❌ Xatolik yuz berdi: {e}\nQayta urinib ko'ring.")
 
