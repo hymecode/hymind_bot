@@ -5,7 +5,8 @@ def get_main_keyboard():
         keyboard=[
             [KeyboardButton(text="🌍 Tarjima")],
             [KeyboardButton(text="🍅 Pomodoro"), KeyboardButton(text="⭐ Premium")],
-            [KeyboardButton(text="🎁 Promo-kod"), KeyboardButton(text="👤 Profil")]
+            [KeyboardButton(text="🎲 Randoms"), KeyboardButton(text="🎁 Promo-kod")],
+            [KeyboardButton(text="👤 Profil")]
         ],
         resize_keyboard=True,
         one_time_keyboard=False
