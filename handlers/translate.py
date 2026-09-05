@@ -1,17 +1,14 @@
 from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from googletrans import Translator
+from deep_translator import GoogleTranslator
 from keyboards.translate import get_translate_keyboard, get_back_keyboard
 
 router = Router()
-translator = Translator()
 
 # FSM holati
 class TranslateState(StatesGroup):
     waiting_text = State()
-
-# ... qolgan kod ...
 
 @router.message(F.text == "🌍 Tarjima")
 async def translate_menu(message: types.Message, state: FSMContext):
@@ -47,14 +44,14 @@ async def translate_text(message: types.Message, state: FSMContext):
     
     try:
         if direction == "en-uz":
-            result = translator.translate(text, src='en', dest='uz')
+            result = GoogleTranslator(source='en', target='uz').translate(text)
         else:
-            result = translator.translate(text, src='uz', dest='en')
-        await message.answer(f"🔹 **Tarjima:**\n{result.text}", parse_mode="Markdown")
-    except Exception:
-        await message.answer("❌ Xatolik yuz berdi. Qayta urinib ko'ring.")
+            result = GoogleTranslator(source='uz', target='en').translate(text)
+        await message.answer(f"🔹 **Tarjima:**\n{result}", parse_mode="Markdown")
+    except Exception as e:
+        await message.answer(f"❌ Xatolik yuz berdi: {e}\nQayta urinib ko'ring.")
 
-# ✅ YANGI: Asosiy menyuga qaytish
+# Asosiy menyuga qaytish
 @router.message(F.text == "🔙 Asosiy menyu")
 async def back_to_main(message: types.Message, state: FSMContext):
     await state.clear()
