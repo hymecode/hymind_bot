@@ -2,7 +2,7 @@ from aiogram import Router, types, F
 from utils.database import get_db
 
 router = Router()
-CHAT_ID = -1004359574809  # Yopiq guruh ID'ingiz
+CHAT_ID = -1003863295329  # Yopiq guruh ID'ingiz
 
 @router.message(F.chat.id == CHAT_ID, F.audio | F.voice | F.document)
 async def save_song(message: types.Message):
