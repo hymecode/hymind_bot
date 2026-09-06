@@ -4,10 +4,17 @@ import logging
 
 router = Router()
 
-# ⚠️ O'ZINGIZNING YOPIQ GURUH ID'NGIZNI YOZING!
-CHAT_ID = -1003863295329  # Manfiy son bo'lishi kerak!
+# O'ZINGIZNING GURUH ID'NGIZ
+CHAT_ID = -1003863295329
 
-@router.message(F.chat.id == CHAT_ID, F.audio | F.voice | F.document)
+# VAQTINCHA: BARCHA GURUHLARDAGI MUSIQALARNI ESHITISH (sinov uchun)
+@router.message(F.audio | F.voice | F.document)
+async def test_all_music(message: types.Message):
+    if message.chat.id == CHAT_ID:
+        await message.reply(f"🔍 Musiqa topildi! Chat ID: {message.chat.id}, Message ID: {message.message_id}")
+        # Saqlash funksiyasini chaqiramiz
+        await save_song(message)
+
 async def save_song(message: types.Message):
     try:
         conn = get_db()
@@ -18,9 +25,12 @@ async def save_song(message: types.Message):
         elif message.voice:
             file_id = message.voice.file_id
             file_type = "voice"
-        else:
+        elif message.document:
             file_id = message.document.file_id
             file_type = "document"
+        else:
+            await message.reply("❌ Bu fayl turi qo'llab-quvvatlanmaydi.")
+            return
         
         caption = message.caption or ""
         
@@ -31,13 +41,13 @@ async def save_song(message: types.Message):
         conn.commit()
         conn.close()
         
-        # ✅ Javob yozish (sinov uchun)
         await message.reply(f"✅ Musiqa bazaga saqlandi! (ID: {message.message_id})")
         
     except Exception as e:
         await message.reply(f"❌ Xatolik: {e}")
         logging.error(f"Musiqa saqlash xatosi: {e}")
 
+# So'zlar uchun (faqat guruhdan)
 @router.message(F.chat.id == CHAT_ID, F.text)
 async def save_word(message: types.Message):
     if message.from_user.is_bot:
@@ -50,5 +60,5 @@ async def save_word(message: types.Message):
             conn.close()
             await message.reply("✅ So'z bazaga saqlandi!")
     except Exception as e:
-        await message.reply(f"❌ Xatolik: {e}")
+        await message.reply(f"❌ Xatolik (so'z): {e}")
         logging.error(f"So'z saqlash xatosi: {e}")
