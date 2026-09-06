@@ -120,7 +120,7 @@ async def send_media(callback: types.CallbackQuery):
     
     item = items[index]
     try:
-        await callback.message.bot.forward_message(
+        await callback.message.bot.copy_message(
             chat_id=callback.message.chat.id,
             from_chat_id=item['chat_id'],
             message_id=item['message_id']

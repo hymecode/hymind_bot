@@ -65,7 +65,7 @@ async def send_test(callback: types.CallbackQuery):
 
     test = tests[index]
     try:
-        await callback.message.bot.forward_message(
+        await callback.message.bot.copy_message(
             chat_id=callback.message.chat.id,
             from_chat_id=test['chat_id'],
             message_id=test['message_id']
