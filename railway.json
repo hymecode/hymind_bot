@@ -1,0 +1,13 @@
+{
+  "build": {
+    "builder": "NIXPACKS"
+  },
+  "deploy": {
+    "volumes": {
+      "data": {
+        "mountPath": "/data",
+        "size": "500MB"
+      }
+    }
+  }
+}
