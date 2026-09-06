@@ -10,7 +10,6 @@ IELTS_TESTS = [
 
 # SAT testlari ro'yxati
 SAT_TESTS = [
-    {"chat_id": -1003863295329, "message_id": 8896470319},  # 1-test
-    {"chat_id": -1003863295329, "message_id": 201},  # 2-test
+    {"chat_id": -1003863295329, "message_id": 'AgADZ6YAAji88Ug'},  # 1-test
     # ... 10 tagacha yoki ko'proq
 ]
