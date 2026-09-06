@@ -66,7 +66,7 @@ async def random_song(message: types.Message, state: FSMContext):
     
     played = user_sessions[user_id]['played_songs']
     
-    # Tanlanmaganlarni topish
+    # Tanlanmaganlarni topish (id bo'yicha)
     available = [song for song in all_songs if song['id'] not in played]
     
     if not available:
@@ -84,27 +84,20 @@ async def random_song(message: types.Message, state: FSMContext):
     played.append(selected['id'])
     user_sessions[user_id]['played_songs'] = played
     
-    # Yuborish
+    # Yopiq guruhdan xabarni forward qilish
     try:
-        if selected['file_type'] == 'audio':
-            await message.answer_audio(
-                audio=selected['file_id'],
-                caption=f"🎵 {selected['caption'] or 'Navbatdagi qo\'shiq'}\n"
-                        f"📊 Eshitilgan: {len(played)}/{len(all_songs)}"
-            )
-        elif selected['file_type'] == 'voice':
-            await message.answer_voice(
-                voice=selected['file_id'],
-                caption=f"🎵 Ovozli xabar\n📊 Eshitilgan: {len(played)}/{len(all_songs)}"
-            )
-        elif selected['file_type'] == 'document':
-            await message.answer_document(
-                document=selected['file_id'],
-                caption=f"📄 {selected['caption'] or 'Musiqa fayli'}\n"
-                        f"📊 Eshitilgan: {len(played)}/{len(all_songs)}"
-            )
+        await message.bot.forward_message(
+            chat_id=message.chat.id,
+            from_chat_id=selected['chat_id'],
+            message_id=selected['message_id']
+        )
+        # Statistikani yuborish (ixtiyoriy)
+        await message.answer(
+            f"📊 Eshitilgan: {len(played)}/{len(all_songs)}",
+            reply_to_message_id=message.message_id
+        )
     except Exception as e:
-        await message.answer(f"❌ Xatolik: {e}")
+        await message.answer(f"❌ Xatolik: {e}\n\nQayta urinib ko'ring.")
 
 @router.message(RandomState.active, F.text == "📝 Random Words")
 async def random_words(message: types.Message, state: FSMContext):
@@ -140,6 +133,7 @@ async def random_words(message: types.Message, state: FSMContext):
     played.append(selected['id'])
     user_sessions[user_id]['played_words'] = played
     
+    # Matnni yuborish
     await message.answer(
         f"📝 **Navbatdagi random so'z**\n"
         f"📊 Ko'rilgan: {len(played)}/{len(all_words)}\n\n"
