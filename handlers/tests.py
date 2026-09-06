@@ -85,3 +85,17 @@ async def back_to_main_tests(message: types.Message, state: FSMContext):
     await state.clear()
     from handlers.start import cmd_start
     await cmd_start(message)
+
+@router.message(F.text == "/get_id")
+async def get_message_id(message: types.Message):
+    if not message.reply_to_message:
+        await message.reply("❌ Iltimos, xabarga reply qiling.")
+        return
+    chat_id = message.reply_to_message.chat.id
+    msg_id = message.reply_to_message.message_id
+    await message.reply(
+        f"📌 **Xabar ID:**\n"
+        f"Chat ID: `{chat_id}`\n"
+        f"Message ID: `{msg_id}`",
+        parse_mode="Markdown"
+    )
