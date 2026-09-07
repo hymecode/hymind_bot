@@ -10,7 +10,6 @@ class TranslateState(StatesGroup):
     waiting_text = State()
 
 def get_main_keyboard(lang: str = "uz"):
-    """Asosiy tarjima menyusi tugmalari"""
     if lang == "uz":
         return types.ReplyKeyboardMarkup(
             keyboard=[
@@ -48,7 +47,7 @@ async def translate_menu(message: types.Message, state: FSMContext):
     await state.set_state(TranslateState.waiting_text)
     await message.answer(
         text,
-        reply_markup=types.ReplyKeyboardRemove(),  # Klaviaturani tozalaymiz
+        reply_markup=types.ReplyKeyboardRemove(),
         parse_mode="Markdown"
     )
 
@@ -58,7 +57,6 @@ async def receive_text(message: types.Message, state: FSMContext):
     lang = get_language(user_id) or "uz"
     text = message.text
     
-    # Matnni xotirada saqlaymiz
     await state.update_data(text=text)
     
     if lang == "uz":
@@ -83,8 +81,6 @@ async def back_to_main_translate_en(message: types.Message, state: FSMContext):
     from handlers.start import cmd_start
     await cmd_start(message, None)
 
-# ========== TARJIMA TUGMALARI ==========
-
 @router.message(F.text.in_(["🇺🇿 O'zbekcha", "🇺🇿 Uzbek"]))
 async def translate_to_uzbek(message: types.Message, state: FSMContext):
     await translate_to_language(message, state, "uz")
@@ -93,7 +89,7 @@ async def translate_to_uzbek(message: types.Message, state: FSMContext):
 async def translate_to_russian(message: types.Message, state: FSMContext):
     await translate_to_language(message, state, "ru")
 
-@router.message(F.text.in_(["🇬🇧 English", "🇬🇧 English"]))
+@router.message(F.text.in_(["🇬🇧 English"]))
 async def translate_to_english(message: types.Message, state: FSMContext):
     await translate_to_language(message, state, "en")
 
@@ -109,14 +105,10 @@ async def translate_to_language(message: types.Message, state: FSMContext, targe
         await state.clear()
         return
     
-    # Matnni avtomatik aniqlash (deep_translator buni qo'llab-quvvatlaydi)
     try:
-        # Avval matn qaysi tilda ekanligini aniqlaymiz (ixtiyoriy)
-        # GoogleTranslator avtomatik aniqlaydi, lekin biz `source` ni aniq bermasak bo'ladi
         translator = GoogleTranslator(source='auto', target=target_lang)
         result = translator.translate(text)
         
-        # Til nomlarini chiqarish
         lang_names = {
             "uz": "🇺🇿 O'zbekcha",
             "ru": "🇷🇺 Ruscha",
@@ -134,14 +126,11 @@ async def translate_to_language(message: types.Message, state: FSMContext, targe
                 parse_mode="Markdown"
             )
             
-        # Tarjimadan so'ng yana matn so'rash (yangi matn yuborish uchun)
         if lang == "uz":
             await message.answer("📝 Yana matn yuboring yoki 🔙 Asosiy menyu ga qayting.")
         else:
             await message.answer("📝 Send another text or go 🔙 Main Menu.")
             
-        # State ni tozalamaymiz, chunki foydalanuvchi yana matn yuborishi mumkin
-        # Faqat text ni tozalaymiz (yangi matn kutamiz)
         await state.update_data(text=None)
         
     except Exception as e:
