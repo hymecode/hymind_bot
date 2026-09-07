@@ -16,6 +16,9 @@ class LanguageState(StatesGroup):
 async def cmd_start(message: types.Message, state: FSMContext):
     user_id = message.from_user.id
     
+    # Avvalgi holatni tozalash
+    await state.clear()
+    
     # Foydalanuvchi tilini tekshirish
     lang = get_language(user_id)
     
@@ -52,3 +55,34 @@ async def show_main_menu(message: types.Message, lang: str):
         reply_markup=get_main_keyboard(lang),
         parse_mode="Markdown"
     )
+
+# ========== UMUMIY "ASOSIY MENYU" TUGMASI ==========
+# Bu barcha bo'limlardan asosiy menyuga qaytish uchun ishlatiladi
+
+@router.message(F.text == "🔙 Asosiy menyu")
+async def back_to_main_uz(message: types.Message, state: FSMContext):
+    await state.clear()
+    user_id = message.from_user.id
+    lang = get_language(user_id) or "uz"
+    await show_main_menu(message, lang)
+
+@router.message(F.text == "🔙 Main Menu")
+async def back_to_main_en(message: types.Message, state: FSMContext):
+    await state.clear()
+    user_id = message.from_user.id
+    lang = get_language(user_id) or "en"
+    await show_main_menu(message, lang)
+
+@router.message(F.text == "🔙 Orqaga")
+async def back_to_main_uz_back(message: types.Message, state: FSMContext):
+    await state.clear()
+    user_id = message.from_user.id
+    lang = get_language(user_id) or "uz"
+    await show_main_menu(message, lang)
+
+@router.message(F.text == "🔙 Back")
+async def back_to_main_en_back(message: types.Message, state: FSMContext):
+    await state.clear()
+    user_id = message.from_user.id
+    lang = get_language(user_id) or "en"
+    await show_main_menu(message, lang)

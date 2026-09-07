@@ -26,7 +26,6 @@ def get_main_keyboard(lang: str = "uz"):
             one_time_keyboard=False
         )
     else:
-        # English version
         return ReplyKeyboardMarkup(
             keyboard=[
                 [KeyboardButton(text="🌍 Translate")],

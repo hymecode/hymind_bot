@@ -5,20 +5,22 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from deep_translator import GoogleTranslator
 from handlers.language_state import get_language
+from handlers.start import show_main_menu
 
 router = Router()
 
 class TranslateState(StatesGroup):
     waiting_text = State()
 
-# Tarjima tugmalari ro‘yxati (istisno qilish uchun)
+# Tarjima tugmalari ro‘yxati
 TRANSLATE_BUTTONS = [
     "🇺🇿 O'zbekcha", "🇷🇺 Ruscha", "🇬🇧 English",
     "🇺🇿 Uzbek", "🇷🇺 Russian",
-    "🔙 Asosiy menyu", "🔙 Main Menu"
+    "🔙 Asosiy menyu", "🔙 Main Menu",
+    "🔙 Orqaga", "🔙 Back"
 ]
 
-def get_main_keyboard(lang: str = "uz"):
+def get_translate_keyboard(lang: str = "uz"):
     if lang == "uz":
         return types.ReplyKeyboardMarkup(
             keyboard=[
@@ -60,7 +62,7 @@ async def translate_menu(message: types.Message, state: FSMContext):
         parse_mode="Markdown"
     )
 
-# Matn qabul qilish (faqat tugmalar EMAS)
+# Matn qabul qilish (faqat matn, tugmalar EMAS)
 @router.message(TranslateState.waiting_text, F.text, ~F.text.in_(TRANSLATE_BUTTONS))
 async def receive_text(message: types.Message, state: FSMContext):
     user_id = message.from_user.id
@@ -76,24 +78,11 @@ async def receive_text(message: types.Message, state: FSMContext):
     
     await message.answer(
         prompt,
-        reply_markup=get_main_keyboard(lang)
+        reply_markup=get_translate_keyboard(lang)
     )
 
-# Asosiy menyuga qaytish (uzb)
-@router.message(TranslateState.waiting_text, F.text == "🔙 Asosiy menyu")
-async def back_to_main_translate(message: types.Message, state: FSMContext):
-    await state.clear()
-    from handlers.start import cmd_start
-    await cmd_start(message, None)
+# ========== TARJIMA TUGMALARI ==========
 
-# Asosiy menyuga qaytish (eng)
-@router.message(TranslateState.waiting_text, F.text == "🔙 Main Menu")
-async def back_to_main_translate_en(message: types.Message, state: FSMContext):
-    await state.clear()
-    from handlers.start import cmd_start
-    await cmd_start(message, None)
-
-# Tarjima tugmalari (uzb)
 @router.message(F.text.in_(["🇺🇿 O'zbekcha", "🇺🇿 Uzbek"]))
 async def translate_to_uzbek(message: types.Message, state: FSMContext):
     await translate_to_language(message, state, "uz")
@@ -133,15 +122,20 @@ async def translate_to_language(message: types.Message, state: FSMContext, targe
                 f"🔹 **Tarjima ({lang_names.get(target_lang, target_lang)}):**\n\n{result}",
                 parse_mode="Markdown"
             )
-            await message.answer("📝 Yana matn yuboring yoki 🔙 Asosiy menyu ga qayting.")
+            await message.answer(
+                "📝 Yana matn yuboring yoki 🔙 Asosiy menyu ga qayting.",
+                reply_markup=get_translate_keyboard(lang)
+            )
         else:
             await message.answer(
                 f"🔹 **Translation ({lang_names.get(target_lang, target_lang)}):**\n\n{result}",
                 parse_mode="Markdown"
             )
-            await message.answer("📝 Send another text or go 🔙 Main Menu.")
+            await message.answer(
+                "📝 Send another text or go 🔙 Main Menu.",
+                reply_markup=get_translate_keyboard(lang)
+            )
         
-        # Yangi matn kutamiz
         await state.update_data(text=None)
         
     except Exception as e:
@@ -149,3 +143,19 @@ async def translate_to_language(message: types.Message, state: FSMContext, targe
             await message.answer(f"❌ Xatolik: {e}\nQayta urinib ko'ring.")
         else:
             await message.answer(f"❌ Error: {e}\nTry again.")
+
+# ========== ASOSIY MENYUGA QAYTISH ==========
+
+@router.message(F.text == "🔙 Asosiy menyu")
+async def back_to_main_translate_uz(message: types.Message, state: FSMContext):
+    await state.clear()
+    user_id = message.from_user.id
+    lang = get_language(user_id) or "uz"
+    await show_main_menu(message, lang)
+
+@router.message(F.text == "🔙 Main Menu")
+async def back_to_main_translate_en(message: types.Message, state: FSMContext):
+    await state.clear()
+    user_id = message.from_user.id
+    lang = get_language(user_id) or "en"
+    await show_main_menu(message, lang)

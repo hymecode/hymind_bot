@@ -1,25 +1,57 @@
+# handlers/tests.py
+
 from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from test_ids import IELTS_TESTS, SAT_TESTS
+from handlers.start import show_main_menu
+from handlers.language_state import get_language
 
 router = Router()
+
+def get_text(lang: str, key: str):
+    texts = {
+        "uz": {
+            "menu": "📝 **Tests bo'limi**\n\nQuyidagi tugmalardan birini tanlang:",
+            "ielts": "📚 IELTS",
+            "sat": "📚 SAT",
+            "back": "🔙 Asosiy menyu",
+            "no_tests": "❌ {category} testlari topilmadi.",
+            "list_title": "📚 **{category} testlari**\n\nJami: {count} ta test.",
+            "sent": "✅ Test {num} yuborildi!",
+            "not_found": "❌ Bunday test mavjud emas!"
+        },
+        "en": {
+            "menu": "📝 **Tests section**\n\nChoose one of the following:",
+            "ielts": "📚 IELTS",
+            "sat": "📚 SAT",
+            "back": "🔙 Main Menu",
+            "no_tests": "❌ No {category} tests found.",
+            "list_title": "📚 **{category} tests**\n\nTotal: {count} tests.",
+            "sent": "✅ Test {num} sent!",
+            "not_found": "❌ Test not found!"
+        }
+    }
+    return texts.get(lang, texts["uz"]).get(key, "")
 
 @router.message(F.text == "📝 Tests")
 async def tests_menu(message: types.Message, state: FSMContext):
     await state.clear()
+    user_id = message.from_user.id
+    lang = get_language(user_id) or "uz"
+    
+    t = get_text(lang, "")
     keyboard = types.ReplyKeyboardMarkup(
         keyboard=[
-            [types.KeyboardButton(text="📚 IELTS")],
-            [types.KeyboardButton(text="📚 SAT")],
-            [types.KeyboardButton(text="🔙 Asosiy menyu")]
+            [types.KeyboardButton(text=t.get("ielts", "📚 IELTS"))],
+            [types.KeyboardButton(text=t.get("sat", "📚 SAT"))],
+            [types.KeyboardButton(text=t.get("back", "🔙 Asosiy menyu"))]
         ],
         resize_keyboard=True,
         one_time_keyboard=False
     )
     await message.answer(
-        "📝 **Tests bo'limi**\n\n"
-        "Quyidagi tugmalardan birini tanlang:",
+        get_text(lang, "menu"),
         reply_markup=keyboard,
         parse_mode="Markdown"
     )
@@ -33,8 +65,12 @@ async def show_sat_tests(message: types.Message):
     await show_test_list(message, SAT_TESTS, "SAT")
 
 async def show_test_list(message: types.Message, tests: list, category: str):
+    user_id = message.from_user.id
+    lang = get_language(user_id) or "uz"
+    t = get_text(lang, "")
+    
     if not tests:
-        await message.answer(f"❌ {category} testlari topilmadi.")
+        await message.answer(t.get("no_tests", "").format(category=category))
         return
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=[])
@@ -47,7 +83,7 @@ async def show_test_list(message: types.Message, tests: list, category: str):
     )
 
     await message.answer(
-        f"📚 **{category} testlari**\n\nJami: {len(tests)} ta test.",
+        t.get("list_title", "").format(category=category, count=len(tests)),
         reply_markup=keyboard,
         parse_mode="Markdown"
     )
@@ -55,12 +91,16 @@ async def show_test_list(message: types.Message, tests: list, category: str):
 @router.callback_query(F.data.startswith("test_"))
 async def send_test(callback: types.CallbackQuery):
     data = callback.data.split("_")
-    category = data[1]  # ielts yoki sat
+    category = data[1]
     index = int(data[2])
 
     tests = IELTS_TESTS if category == "ielts" else SAT_TESTS
+    user_id = callback.from_user.id
+    lang = get_language(user_id) or "uz"
+    t = get_text(lang, "")
+    
     if index >= len(tests):
-        await callback.answer("❌ Bunday test mavjud emas!", show_alert=True)
+        await callback.answer(t.get("not_found", ""), show_alert=True)
         return
 
     test = tests[index]
@@ -70,7 +110,7 @@ async def send_test(callback: types.CallbackQuery):
             from_chat_id=test['chat_id'],
             message_id=test['message_id']
         )
-        await callback.answer(f"✅ Test {index+1} yuborildi!")
+        await callback.answer(t.get("sent", "").format(num=index+1))
     except Exception as e:
         await callback.answer(f"❌ Xatolik: {e}", show_alert=True)
 
@@ -80,36 +120,17 @@ async def back_to_tests(callback: types.CallbackQuery):
     await tests_menu(callback.message, None)
     await callback.answer()
 
+# Asosiy menyuga qaytish
 @router.message(F.text == "🔙 Asosiy menyu")
-async def back_to_main_tests(message: types.Message, state: FSMContext):
+async def back_to_main_tests_uz(message: types.Message, state: FSMContext):
     await state.clear()
-    from handlers.start import cmd_start
-    await cmd_start(message)
+    user_id = message.from_user.id
+    lang = get_language(user_id) or "uz"
+    await show_main_menu(message, lang)
 
-@router.message(F.text == "/get_id")
-async def get_message_id(message: types.Message):
-    if not message.reply_to_message:
-        await message.reply("❌ Iltimos, xabarga reply qiling.")
-        return
-    chat_id = message.reply_to_message.chat.id
-    msg_id = message.reply_to_message.message_id
-    await message.reply(
-        f"📌 **Xabar ID:**\n"
-        f"Chat ID: `{chat_id}`\n"
-        f"Message ID: `{msg_id}`",
-        parse_mode="Markdown"
-    )
-
-@router.message(F.text == "/get_id")
-async def get_message_id(message: types.Message):
-    if not message.reply_to_message:
-        await message.reply("❌ Iltimos, xabarga reply qiling.")
-        return
-    chat_id = message.reply_to_message.chat.id
-    msg_id = message.reply_to_message.message_id
-    await message.reply(
-        f"📌 **Xabar ID:**\n"
-        f"Chat ID: `{chat_id}`\n"
-        f"Message ID: `{msg_id}`",
-        parse_mode="Markdown"
-    )
+@router.message(F.text == "🔙 Main Menu")
+async def back_to_main_tests_en(message: types.Message, state: FSMContext):
+    await state.clear()
+    user_id = message.from_user.id
+    lang = get_language(user_id) or "en"
+    await show_main_menu(message, lang)

@@ -1,3 +1,5 @@
+# handlers/__init__.py
+
 from aiogram import Dispatcher
 
 def setup_handlers(dp: Dispatcher):
