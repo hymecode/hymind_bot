@@ -1,3 +1,5 @@
+# handlers/start.py
+
 from aiogram import Router, types, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
@@ -14,9 +16,11 @@ class LanguageState(StatesGroup):
 async def cmd_start(message: types.Message, state: FSMContext):
     user_id = message.from_user.id
     
+    # Foydalanuvchi tilini tekshirish
     lang = get_language(user_id)
     
     if lang is None:
+        # Til tanlanmagan – so'raymiz
         await state.set_state(LanguageState.choosing_language)
         await message.answer(
             "🌍 Tilni tanlang / Choose language:",
@@ -24,6 +28,7 @@ async def cmd_start(message: types.Message, state: FSMContext):
         )
         return
     
+    # Til tanlangan – asosiy menyuni ko'rsatamiz
     await show_main_menu(message, lang)
 
 @router.message(LanguageState.choosing_language, F.text.in_(["🇺🇿 O'zbekcha", "🇬🇧 English"]))
@@ -40,7 +45,7 @@ async def show_main_menu(message: types.Message, lang: str):
     if lang == "uz":
         text = "🧠 **HyMind** botiga xush kelibsiz!\n\nQuyidagi bo'limlardan birini tanlang:"
     else:
-        text = "🧠 **HyMind** botiga xush kelibsiz!\n\nChoose one of the following sections:"
+        text = "🧠 Welcome to **HyMind** bot!\n\nChoose one of the following sections:"
     
     await message.answer(
         text,
