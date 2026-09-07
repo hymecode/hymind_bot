@@ -11,6 +11,13 @@ router = Router()
 class TranslateState(StatesGroup):
     waiting_text = State()
 
+# Tarjima tugmalari ro‘yxati (istisno qilish uchun)
+TRANSLATE_BUTTONS = [
+    "🇺🇿 O'zbekcha", "🇷🇺 Ruscha", "🇬🇧 English",
+    "🇺🇿 Uzbek", "🇷🇺 Russian",
+    "🔙 Asosiy menyu", "🔙 Main Menu"
+]
+
 def get_main_keyboard(lang: str = "uz"):
     if lang == "uz":
         return types.ReplyKeyboardMarkup(
@@ -53,7 +60,8 @@ async def translate_menu(message: types.Message, state: FSMContext):
         parse_mode="Markdown"
     )
 
-@router.message(TranslateState.waiting_text, F.text)
+# Matn qabul qilish (faqat tugmalar EMAS)
+@router.message(TranslateState.waiting_text, F.text, ~F.text.in_(TRANSLATE_BUTTONS))
 async def receive_text(message: types.Message, state: FSMContext):
     user_id = message.from_user.id
     lang = get_language(user_id) or "uz"
@@ -71,19 +79,21 @@ async def receive_text(message: types.Message, state: FSMContext):
         reply_markup=get_main_keyboard(lang)
     )
 
+# Asosiy menyuga qaytish (uzb)
 @router.message(TranslateState.waiting_text, F.text == "🔙 Asosiy menyu")
 async def back_to_main_translate(message: types.Message, state: FSMContext):
     await state.clear()
     from handlers.start import cmd_start
     await cmd_start(message, None)
 
+# Asosiy menyuga qaytish (eng)
 @router.message(TranslateState.waiting_text, F.text == "🔙 Main Menu")
 async def back_to_main_translate_en(message: types.Message, state: FSMContext):
     await state.clear()
     from handlers.start import cmd_start
     await cmd_start(message, None)
 
-# Tarjima tugmalari
+# Tarjima tugmalari (uzb)
 @router.message(F.text.in_(["🇺🇿 O'zbekcha", "🇺🇿 Uzbek"]))
 async def translate_to_uzbek(message: types.Message, state: FSMContext):
     await translate_to_language(message, state, "uz")
@@ -131,6 +141,7 @@ async def translate_to_language(message: types.Message, state: FSMContext, targe
             )
             await message.answer("📝 Send another text or go 🔙 Main Menu.")
         
+        # Yangi matn kutamiz
         await state.update_data(text=None)
         
     except Exception as e:
