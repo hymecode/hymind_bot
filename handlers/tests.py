@@ -1,136 +1,100 @@
-# handlers/tests.py
-
-from aiogram import Router, types, F
+from aiogram import Router, F
+from aiogram.filters import Command
+from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import Message
+
+from keyboards.main import (
+    tests_menu_kb,
+    tests_list_kb,
+    main_menu_kb,
+    BTN_TESTS,
+    BTN_BACK,
+    BTN_TEST_IELTS,
+    BTN_TEST_SAT,
+)
 from test_ids import IELTS_TESTS, SAT_TESTS
-from handlers.start import show_main_menu
-from handlers.language_state import get_language
+from config import ADMIN_IDS
 
-router = Router()
+router = Router(name="tests")
 
-def get_text(lang: str, key: str):
-    texts = {
-        "uz": {
-            "menu": "📝 **Tests bo'limi**\n\nQuyidagi tugmalardan birini tanlang:",
-            "ielts": "📚 IELTS",
-            "sat": "📚 SAT",
-            "back": "🔙 Asosiy menyu",
-            "no_tests": "❌ {category} testlari topilmadi.",
-            "list_title": "📚 **{category} testlari**\n\nJami: {count} ta test.",
-            "sent": "✅ Test {num} yuborildi!",
-            "not_found": "❌ Bunday test mavjud emas!"
-        },
-        "en": {
-            "menu": "📝 **Tests section**\n\nChoose one of the following:",
-            "ielts": "📚 IELTS",
-            "sat": "📚 SAT",
-            "back": "🔙 Main Menu",
-            "no_tests": "❌ No {category} tests found.",
-            "list_title": "📚 **{category} tests**\n\nTotal: {count} tests.",
-            "sent": "✅ Test {num} sent!",
-            "not_found": "❌ Test not found!"
-        }
-    }
-    return texts.get(lang, texts["uz"]).get(key, "")
 
-@router.message(F.text == "📝 Tests")
-async def tests_menu(message: types.Message, state: FSMContext):
+class TestsStates(StatesGroup):
+    choosing_category = State()
+    choosing_test = State()
+
+
+@router.message(F.text == BTN_TESTS)
+async def open_tests_menu(message: Message, state: FSMContext) -> None:
+    await state.set_state(TestsStates.choosing_category)
+    await message.answer("📚 Bo'limni tanlang:", reply_markup=tests_menu_kb())
+
+
+@router.message(TestsStates.choosing_category, F.text == BTN_BACK)
+async def back_from_categories(message: Message, state: FSMContext) -> None:
     await state.clear()
-    user_id = message.from_user.id
-    lang = get_language(user_id) or "uz"
-    
-    t = get_text(lang, "")
-    keyboard = types.ReplyKeyboardMarkup(
-        keyboard=[
-            [types.KeyboardButton(text=t.get("ielts", "📚 IELTS"))],
-            [types.KeyboardButton(text=t.get("sat", "📚 SAT"))],
-            [types.KeyboardButton(text=t.get("back", "🔙 Asosiy menyu"))]
-        ],
-        resize_keyboard=True,
-        one_time_keyboard=False
-    )
-    await message.answer(
-        get_text(lang, "menu"),
-        reply_markup=keyboard,
-        parse_mode="Markdown"
-    )
+    await message.answer("🔙 Asosiy menyu", reply_markup=main_menu_kb())
 
-@router.message(F.text == "📚 IELTS")
-async def show_ielts_tests(message: types.Message):
-    await show_test_list(message, IELTS_TESTS, "IELTS")
 
-@router.message(F.text == "📚 SAT")
-async def show_sat_tests(message: types.Message):
-    await show_test_list(message, SAT_TESTS, "SAT")
+@router.message(TestsStates.choosing_category, F.text.in_({BTN_TEST_IELTS, BTN_TEST_SAT}))
+async def choose_category(message: Message, state: FSMContext) -> None:
+    category = "ielts" if message.text == BTN_TEST_IELTS else "sat"
+    tests_list = IELTS_TESTS if category == "ielts" else SAT_TESTS
 
-async def show_test_list(message: types.Message, tests: list, category: str):
-    user_id = message.from_user.id
-    lang = get_language(user_id) or "uz"
-    t = get_text(lang, "")
-    
-    if not tests:
-        await message.answer(t.get("no_tests", "").format(category=category))
+    if not tests_list:
+        await message.answer("😔 Hozircha bu bo'limda testlar mavjud emas.")
         return
 
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[])
-    for i in range(len(tests)):
-        keyboard.inline_keyboard.append(
-            [InlineKeyboardButton(text=f"Test {i+1}", callback_data=f"test_{category.lower()}_{i}")]
-        )
-    keyboard.inline_keyboard.append(
-        [InlineKeyboardButton(text="🔙 Orqaga", callback_data="back_to_tests")]
-    )
+    titles = [t["title"] for t in tests_list]
+    await state.update_data(category=category)
+    await state.set_state(TestsStates.choosing_test)
+    await message.answer("📄 Testni tanlang:", reply_markup=tests_list_kb(titles))
 
-    await message.answer(
-        t.get("list_title", "").format(category=category, count=len(tests)),
-        reply_markup=keyboard,
-        parse_mode="Markdown"
-    )
 
-@router.callback_query(F.data.startswith("test_"))
-async def send_test(callback: types.CallbackQuery):
-    data = callback.data.split("_")
-    category = data[1]
-    index = int(data[2])
+@router.message(TestsStates.choosing_test, F.text == BTN_BACK)
+async def back_from_test_list(message: Message, state: FSMContext) -> None:
+    await state.set_state(TestsStates.choosing_category)
+    await message.answer("📚 Bo'limni tanlang:", reply_markup=tests_menu_kb())
 
-    tests = IELTS_TESTS if category == "ielts" else SAT_TESTS
-    user_id = callback.from_user.id
-    lang = get_language(user_id) or "uz"
-    t = get_text(lang, "")
-    
-    if index >= len(tests):
-        await callback.answer(t.get("not_found", ""), show_alert=True)
+
+@router.message(TestsStates.choosing_test, F.text)
+async def send_selected_test(message: Message, state: FSMContext) -> None:
+    data = await state.get_data()
+    category = data.get("category")
+    tests_list = IELTS_TESTS if category == "ielts" else SAT_TESTS
+
+    selected = next((t for t in tests_list if t["title"] == message.text), None)
+    if not selected:
+        await message.answer("⚠️ Bunday test topilmadi, ro'yxatdan tanlang.")
         return
 
-    test = tests[index]
     try:
-        await callback.message.bot.copy_message(
-            chat_id=callback.message.chat.id,
-            from_chat_id=test['chat_id'],
-            message_id=test['message_id']
+        await message.bot.copy_message(
+            chat_id=message.chat.id,
+            from_chat_id=selected["chat_id"],
+            message_id=selected["message_id"],
         )
-        await callback.answer(t.get("sent", "").format(num=index+1))
     except Exception as e:
-        await callback.answer(f"❌ Xatolik: {e}", show_alert=True)
+        await message.answer(f"⚠️ Testni yuborishda xatolik: {e}")
 
-@router.callback_query(F.data == "back_to_tests")
-async def back_to_tests(callback: types.CallbackQuery):
-    await callback.message.delete()
-    await tests_menu(callback.message, None)
-    await callback.answer()
 
-# Asosiy menyuga qaytish
-@router.message(F.text == "🔙 Asosiy menyu")
-async def back_to_main_tests_uz(message: types.Message, state: FSMContext):
-    await state.clear()
-    user_id = message.from_user.id
-    lang = get_language(user_id) or "uz"
-    await show_main_menu(message, lang)
+# ---------------- Admin: yopiq guruhdan ID olish ----------------
 
-@router.message(F.text == "🔙 Main Menu")
-async def back_to_main_tests_en(message: types.Message, state: FSMContext):
-    await state.clear()
-    user_id = message.from_user.id
-    lang = get_language(user_id) or "en"
-    await show_main_menu(message, lang)
+
+@router.message(Command("get_id"))
+async def get_id_command(message: Message) -> None:
+    if message.from_user.id not in ADMIN_IDS:
+        return  # oddiy foydalanuvchilarga jim javob
+
+    if not message.reply_to_message:
+        await message.answer(
+            "ℹ️ Bu buyruqni yopiq guruhdagi biror xabarga *reply* qilib yuboring.",
+            parse_mode="Markdown",
+        )
+        return
+
+    replied = message.reply_to_message
+    await message.answer(
+        f"chat_id: `{replied.chat.id}`\nmessage_id: `{replied.message_id}`",
+        parse_mode="Markdown",
+    )

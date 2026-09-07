@@ -1,92 +1,87 @@
-from aiogram import Router, types, F
-from aiogram.fsm.context import FSMContext
+from aiogram import Router, F, Bot
 from aiogram.fsm.state import State, StatesGroup
-from config import ADMIN_IDS
+from aiogram.fsm.context import FSMContext
+from aiogram.types import Message
 
-router = Router()
+from keyboards.main import (
+    support_menu_kb,
+    remove_keyboard,
+    main_menu_kb,
+    BTN_SUPPORT,
+    BTN_BACK,
+    BTN_SUPPORT_ADMIN,
+    BTN_SUPPORT_SUGGEST,
+    BTN_SUPPORT_DONATE,
+)
+from config import ADMIN_IDS, ADMIN_USERNAME, SUPPORT_CARD_NUMBER
 
-class SupportState(StatesGroup):
-    waiting_offer = State()
+router = Router(name="support")
 
-@router.message(F.text == "🆘 Support")
-async def support_menu(message: types.Message, state: FSMContext):
+
+class SupportStates(StatesGroup):
+    menu = State()
+    waiting_for_suggestion = State()
+
+
+@router.message(F.text == BTN_SUPPORT)
+async def open_support_menu(message: Message, state: FSMContext) -> None:
+    await state.set_state(SupportStates.menu)
+    await message.answer("🆘 Kerakli bo'limni tanlang:", reply_markup=support_menu_kb())
+
+
+@router.message(SupportStates.menu, F.text == BTN_BACK)
+async def back_from_support_menu(message: Message, state: FSMContext) -> None:
     await state.clear()
-    keyboard = types.ReplyKeyboardMarkup(
-        keyboard=[
-            [types.KeyboardButton(text="👤 Admin")],
-            [types.KeyboardButton(text="💡 Taklif yozish")],
-            [types.KeyboardButton(text="💰 Qo'llab-quvvatlash")],
-            [types.KeyboardButton(text="🔙 Asosiy menyu")]
-        ],
-        resize_keyboard=True,
-        one_time_keyboard=False
-    )
+    await message.answer("🔙 Asosiy menyu", reply_markup=main_menu_kb())
+
+
+@router.message(SupportStates.menu, F.text == BTN_SUPPORT_ADMIN)
+async def show_admin(message: Message) -> None:
+    await message.answer(f"👤 Admin bilan bog'lanish uchun: {ADMIN_USERNAME}")
+
+
+@router.message(SupportStates.menu, F.text == BTN_SUPPORT_DONATE)
+async def show_donate_card(message: Message) -> None:
     await message.answer(
-        "🆘 **Support bo'limi**\n\n"
-        "Quyidagi tugmalardan birini tanlang:",
-        reply_markup=keyboard,
-        parse_mode="Markdown"
+        f"💳 Botni qo'llab-quvvatlash uchun karta raqami:\n\n`{SUPPORT_CARD_NUMBER}`",
+        parse_mode="Markdown",
     )
 
-@router.message(F.text == "👤 Admin")
-async def contact_admin(message: types.Message):
-    admin_username = "HyMe"  # O'zingizning username'ingiz ( @ belgisiz )
+
+@router.message(SupportStates.menu, F.text == BTN_SUPPORT_SUGGEST)
+async def ask_for_suggestion(message: Message, state: FSMContext) -> None:
+    await state.set_state(SupportStates.waiting_for_suggestion)
     await message.answer(
-        f"👤 **Admin:** @{admin_username}\n\n"
-        "Savol yoki muammo bo'lsa, admin bilan bog'lanishingiz mumkin.",
-        parse_mode="Markdown"
+        "✍️ Taklif yoki fikringizni yozib qoldiring:",
+        reply_markup=remove_keyboard(),
     )
 
-@router.message(F.text == "💡 Taklif yozish")
-async def offer_write(message: types.Message, state: FSMContext):
-    await state.set_state(SupportState.waiting_offer)
-    await message.answer(
-        "💡 **Taklif yozish**\n\n"
-        "Taklifingizni yozib qoldiring. Admin ko'rib chiqadi.\n"
-        "❌ Bekor qilish uchun /cancel buyrug'ini bering.",
-        parse_mode="Markdown"
-    )
 
-@router.message(SupportState.waiting_offer, F.text)
-async def save_offer(message: types.Message, state: FSMContext):
+@router.message(SupportStates.waiting_for_suggestion, F.text == BTN_BACK)
+async def back_from_suggestion(message: Message, state: FSMContext) -> None:
+    await state.set_state(SupportStates.menu)
+    await message.answer("🆘 Kerakli bo'limni tanlang:", reply_markup=support_menu_kb())
+
+
+@router.message(SupportStates.waiting_for_suggestion, F.text)
+async def receive_suggestion(message: Message, state: FSMContext, bot: Bot) -> None:
     user = message.from_user
-    offer_text = message.text
+    text_for_admins = (
+        f"📩 Yangi taklif!\n\n"
+        f"👤 Foydalanuvchi: {user.full_name} (@{user.username or 'no_username'})\n"
+        f"🆔 ID: {user.id}\n\n"
+        f"💬 Matn:\n{message.text}"
+    )
 
-    # Taklifni adminlarga yuborish
     for admin_id in ADMIN_IDS:
         try:
-            await message.bot.send_message(
-                admin_id,
-                f"💡 **Yangi taklif!**\n\n"
-                f"👤 Foydalanuvchi: {user.first_name} (@{user.username or 'mavjud emas'})\n"
-                f"🆔 ID: {user.id}\n"
-                f"📝 Taklif:\n{offer_text}",
-                parse_mode="Markdown"
-            )
-        except:
+            await bot.send_message(chat_id=admin_id, text=text_for_admins)
+        except Exception:
+            # Admin botni bloklagan yoki chat topilmagan bo'lishi mumkin - o'tkazib yuboramiz
             pass
 
-    await message.answer("✅ Taklifingiz qabul qilindi! Rahmat.")
-    await state.clear()
-
-@router.message(SupportState.waiting_offer, F.text == "/cancel")
-async def cancel_offer(message: types.Message, state: FSMContext):
-    await state.clear()
-    await message.answer("❌ Taklif yozish bekor qilindi.")
-
-@router.message(F.text == "💰 Qo'llab-quvvatlash")
-async def support_with_money(message: types.Message):
-    card_number = "8600 1234 5678 9012"  # O'zingizning karta raqamingiz
+    await state.set_state(SupportStates.menu)
     await message.answer(
-        f"💰 **Loyihani qo'llab-quvvatlash**\n\n"
-        f"Agar loyihani qo'llab-quvvatlamoqchi bo'lsangiz, quyidagi kartaga pul o'tkazishingiz mumkin:\n\n"
-        f"💳 **{card_number}** (Humo/Uzcard)\n\n"
-        f"Rahmat! Sizning yordamingiz loyihani rivojlantirishga yordam beradi.",
-        parse_mode="Markdown"
+        "✅ Rahmat! Taklifingiz adminlarga yuborildi.",
+        reply_markup=support_menu_kb(),
     )
-
-@router.message(F.text == "🔙 Asosiy menyu")
-async def back_to_main_support(message: types.Message, state: FSMContext):
-    await state.clear()
-    from handlers.start import cmd_start
-    await cmd_start(message)

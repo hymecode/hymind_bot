@@ -1,161 +1,81 @@
-# handlers/translate.py
-
-from aiogram import Router, types, F
-from aiogram.fsm.context import FSMContext
+from aiogram import Router, F
 from aiogram.fsm.state import State, StatesGroup
+from aiogram.fsm.context import FSMContext
+from aiogram.types import Message
 from deep_translator import GoogleTranslator
+
+from keyboards.main import (
+    remove_keyboard,
+    translate_lang_kb,
+    main_menu_kb,
+    BTN_TRANSLATE,
+    BTN_BACK,
+    BTN_TR_UZ,
+    BTN_TR_RU,
+    BTN_TR_EN,
+)
 from handlers.language_state import get_language
-from handlers.start import show_main_menu
 
-router = Router()
+router = Router(name="translate")
 
-class TranslateState(StatesGroup):
-    waiting_text = State()
+LANG_CODE_MAP = {
+    BTN_TR_UZ: "uz",
+    BTN_TR_RU: "ru",
+    BTN_TR_EN: "en",
+}
 
-# Tarjima tugmalari ro‘yxati
-TRANSLATE_BUTTONS = [
-    "🇺🇿 O'zbekcha", "🇷🇺 Ruscha", "🇬🇧 English",
-    "🇺🇿 Uzbek", "🇷🇺 Russian",
-    "🔙 Asosiy menyu", "🔙 Main Menu",
-    "🔙 Orqaga", "🔙 Back"
-]
 
-def get_translate_keyboard(lang: str = "uz"):
-    if lang == "uz":
-        return types.ReplyKeyboardMarkup(
-            keyboard=[
-                [types.KeyboardButton(text="🇺🇿 O'zbekcha")],
-                [types.KeyboardButton(text="🇷🇺 Ruscha")],
-                [types.KeyboardButton(text="🇬🇧 English")],
-                [types.KeyboardButton(text="🔙 Asosiy menyu")]
-            ],
-            resize_keyboard=True,
-            one_time_keyboard=False
-        )
-    else:
-        return types.ReplyKeyboardMarkup(
-            keyboard=[
-                [types.KeyboardButton(text="🇺🇿 Uzbek")],
-                [types.KeyboardButton(text="🇷🇺 Russian")],
-                [types.KeyboardButton(text="🇬🇧 English")],
-                [types.KeyboardButton(text="🔙 Main Menu")]
-            ],
-            resize_keyboard=True,
-            one_time_keyboard=False
-        )
+class TranslateStates(StatesGroup):
+    waiting_for_text = State()
+    waiting_for_language = State()
 
-@router.message(F.text == "🌍 Tarjima")
-async def translate_menu(message: types.Message, state: FSMContext):
+
+ASK_TEXT_MSG = "✍️ Tarjima qilinadigan matnni yuboring:"
+
+
+@router.message(F.text == BTN_TRANSLATE)
+async def start_translate(message: Message, state: FSMContext) -> None:
+    await state.set_state(TranslateStates.waiting_for_text)
+    await message.answer(ASK_TEXT_MSG, reply_markup=remove_keyboard())
+
+
+@router.message(TranslateStates.waiting_for_text, F.text == BTN_BACK)
+async def back_from_waiting_text(message: Message, state: FSMContext) -> None:
     await state.clear()
-    user_id = message.from_user.id
-    lang = get_language(user_id) or "uz"
-    
-    if lang == "uz":
-        text = "🌍 **Tarjima**\n\nMatn yoki so'z yuboring, men uni tarjima qilaman:"
-    else:
-        text = "🌍 **Translate**\n\nSend a text or word, I will translate it:"
-    
-    await state.set_state(TranslateState.waiting_text)
+    await message.answer("🔙 Asosiy menyu", reply_markup=main_menu_kb())
+
+
+@router.message(TranslateStates.waiting_for_text, F.text)
+async def receive_text_to_translate(message: Message, state: FSMContext) -> None:
+    await state.update_data(source_text=message.text)
+    await state.set_state(TranslateStates.waiting_for_language)
     await message.answer(
-        text,
-        reply_markup=types.ReplyKeyboardRemove(),
-        parse_mode="Markdown"
+        "🈯 Qaysi tilga tarjima qilinsin?",
+        reply_markup=translate_lang_kb(),
     )
 
-# Matn qabul qilish (faqat matn, tugmalar EMAS)
-@router.message(TranslateState.waiting_text, F.text, ~F.text.in_(TRANSLATE_BUTTONS))
-async def receive_text(message: types.Message, state: FSMContext):
-    user_id = message.from_user.id
-    lang = get_language(user_id) or "uz"
-    text = message.text
-    
-    await state.update_data(text=text)
-    
-    if lang == "uz":
-        prompt = "✅ Matn qabul qilindi. Qaysi tilga tarjima qilay?"
-    else:
-        prompt = "✅ Text received. Which language to translate to?"
-    
-    await message.answer(
-        prompt,
-        reply_markup=get_translate_keyboard(lang)
-    )
 
-# ========== TARJIMA TUGMALARI ==========
+@router.message(TranslateStates.waiting_for_language, F.text == BTN_BACK)
+async def back_from_waiting_language(message: Message, state: FSMContext) -> None:
+    await state.clear()
+    await message.answer("🔙 Asosiy menyu", reply_markup=main_menu_kb())
 
-@router.message(F.text.in_(["🇺🇿 O'zbekcha", "🇺🇿 Uzbek"]))
-async def translate_to_uzbek(message: types.Message, state: FSMContext):
-    await translate_to_language(message, state, "uz")
 
-@router.message(F.text.in_(["🇷🇺 Ruscha", "🇷🇺 Russian"]))
-async def translate_to_russian(message: types.Message, state: FSMContext):
-    await translate_to_language(message, state, "ru")
-
-@router.message(F.text.in_(["🇬🇧 English", "🇬🇧 English"]))
-async def translate_to_english(message: types.Message, state: FSMContext):
-    await translate_to_language(message, state, "en")
-
-async def translate_to_language(message: types.Message, state: FSMContext, target_lang: str):
-    user_id = message.from_user.id
-    lang = get_language(user_id) or "uz"
-    
+@router.message(TranslateStates.waiting_for_language, F.text.in_(LANG_CODE_MAP.keys()))
+async def do_translate(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
-    text = data.get("text")
-    
-    if not text:
-        await message.answer("❌ Matn topilmadi. Iltimos, qayta matn yuboring.")
-        await state.clear()
-        return
-    
+    source_text = data.get("source_text", "")
+    target_lang = LANG_CODE_MAP[message.text]
+
     try:
-        translator = GoogleTranslator(source='auto', target=target_lang)
-        result = translator.translate(text)
-        
-        lang_names = {
-            "uz": "🇺🇿 O'zbekcha",
-            "ru": "🇷🇺 Ruscha",
-            "en": "🇬🇧 English"
-        }
-        
-        if lang == "uz":
-            await message.answer(
-                f"🔹 **Tarjima ({lang_names.get(target_lang, target_lang)}):**\n\n{result}",
-                parse_mode="Markdown"
-            )
-            await message.answer(
-                "📝 Yana matn yuboring yoki 🔙 Asosiy menyu ga qayting.",
-                reply_markup=get_translate_keyboard(lang)
-            )
-        else:
-            await message.answer(
-                f"🔹 **Translation ({lang_names.get(target_lang, target_lang)}):**\n\n{result}",
-                parse_mode="Markdown"
-            )
-            await message.answer(
-                "📝 Send another text or go 🔙 Main Menu.",
-                reply_markup=get_translate_keyboard(lang)
-            )
-        
-        await state.update_data(text=None)
-        
+        translated = GoogleTranslator(source="auto", target=target_lang).translate(source_text)
     except Exception as e:
-        if lang == "uz":
-            await message.answer(f"❌ Xatolik: {e}\nQayta urinib ko'ring.")
-        else:
-            await message.answer(f"❌ Error: {e}\nTry again.")
+        await message.answer(f"⚠️ Tarjima qilishda xatolik yuz berdi: {e}")
+        translated = None
 
-# ========== ASOSIY MENYUGA QAYTISH ==========
+    if translated:
+        await message.answer(f"✅ Natija:\n\n{translated}")
 
-@router.message(F.text == "🔙 Asosiy menyu")
-async def back_to_main_translate_uz(message: types.Message, state: FSMContext):
-    await state.clear()
-    user_id = message.from_user.id
-    lang = get_language(user_id) or "uz"
-    await show_main_menu(message, lang)
-
-@router.message(F.text == "🔙 Main Menu")
-async def back_to_main_translate_en(message: types.Message, state: FSMContext):
-    await state.clear()
-    user_id = message.from_user.id
-    lang = get_language(user_id) or "en"
-    await show_main_menu(message, lang)
+    # Yana matn kiritishni so'raymiz (klaviatura tozalanadi)
+    await state.set_state(TranslateStates.waiting_for_text)
+    await message.answer(ASK_TEXT_MSG, reply_markup=remove_keyboard())

@@ -1,33 +1,27 @@
-# media_ids.py
+# Media kontenti (filmlar, multfilmlar, animelar) shu yopiq guruh/kanalda saqlanadi.
+# Har bir element uchun chat_id, message_id va title (foydalanuvchiga ko'rinadigan nom) kiritiladi.
 
-# O'zbek tilidagi kontent
 UZB_MEDIA = {
     "movies": [
-        {"chat_id": -1004365133192, "message_id": 100, "title": "Film 1"},
-        {"chat_id": -1004365133192, "message_id": 101, "title": "Film 2"},
+        {"chat_id": -1003863295329, "message_id": 300, "title": "Film nomi 1"},
+        {"chat_id": -1003863295329, "message_id": 301, "title": "Film nomi 2"},
     ],
     "cartoons": [
-        {"chat_id": -1004365133192, "message_id": 200, "title": "Multfilm 1"},
-        {"chat_id": -1004365133192, "message_id": 201, "title": "Multfilm 2"},
+        {"chat_id": -1003863295329, "message_id": 310, "title": "Multfilm nomi 1"},
     ],
     "anime": [
-        {"chat_id": -1004365133192, "message_id": 300, "title": "Anime 1"},
-        {"chat_id": -1004365133192, "message_id": 301, "title": "Anime 2"},
-    ]
+        {"chat_id": -1003863295329, "message_id": 320, "title": "Anime nomi 1"},
+    ],
 }
 
-# Ingliz tilidagi kontent
 ENG_MEDIA = {
     "movies": [
-        {"chat_id": -1004365133192, "message_id": 2, "title": "Movie 1"},
-        {"chat_id": -1004365133192, "message_id": 401, "title": "Movie 2"},
+        {"chat_id": -1003863295329, "message_id": 2, "title": "Movie name 1"},
     ],
     "cartoons": [
-        {"chat_id": -1004365133192, "message_id": 500, "title": "Cartoon 1"},
-        {"chat_id": -1004365133192, "message_id": 501, "title": "Cartoon 2"},
+        {"chat_id": -1003863295329, "message_id": 410, "title": "Cartoon name 1"},
     ],
     "anime": [
-        {"chat_id": -1004365133192, "message_id": 600, "title": "Anime 1"},
-        {"chat_id": -1004365133192, "message_id": 601, "title": "Anime 2"},
-    ]
+        {"chat_id": -1003863295329, "message_id": 420, "title": "Anime name 1"},
+    ],
 }
