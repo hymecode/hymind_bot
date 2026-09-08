@@ -7,7 +7,7 @@ from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 
 from config import BOT_TOKEN
-from handlers import translate, tests, media, support, start
+from handlers import auto_id, translate, tests, media, support, start
 
 
 async def main() -> None:
@@ -25,6 +25,7 @@ async def main() -> None:
     dp.include_router(media.router)
     dp.include_router(support.router)
     dp.include_router(start.router)
+    dp.include_router(auto_id.router)
 
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
