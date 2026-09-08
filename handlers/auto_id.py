@@ -6,13 +6,20 @@ router = Router(name="auto_id")
 
 @router.message()
 async def auto_send_id(message: Message):
+    # Terminalga tekshiruv uchun log chiqarish
+    print(f"DEBUG: Chat: {message.chat.id}, Sender: {message.from_user.id}, SenderChat: {message.sender_chat}")
+
     # Faqat o'sha guruhda ishlaydi
     if message.chat.id != GROUP_ID:
         return
 
-    # Admin yoki guruh profili tekshiruvi
+    # 1) Shaxsiy akkauntdan yuborilgan xabarni tekshiramiz
     is_personal_admin = message.from_user.id in ADMIN_IDS
+    
+    # 2) Guruh profili orqali yuborilgan xabarni tekshiramiz
     is_group_profile = message.sender_chat is not None and message.sender_chat.id == GROUP_ID
+
+    # Agar ikkalasi ham bo'lmasa, to'xtaymiz
     if not is_personal_admin and not is_group_profile:
         return
 
@@ -26,8 +33,8 @@ async def auto_send_id(message: Message):
     if message.text and message.text.startswith("/"):
         return
 
-    # Muhim ID'lar!
-    thread_id = message.message_thread_id if message.message_thread_id else "General (yo'q)"
+    # Muhim ID'larni qaytaramiz!
+    thread_id = message.message_thread_id if message.message_thread_id else "General (Yo'q)"
     
     await message.reply(
         f"✅ Chat ID: `{message.chat.id}`\n"
