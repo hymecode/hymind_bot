@@ -1,31 +1,37 @@
 from aiogram import Router, F
 from aiogram.types import Message
-from config import ADMIN_IDS, GROUP_ID   # GROUP_ID ni ham import qilamiz
+from config import ADMIN_IDS, GROUP_ID
 
 router = Router(name="auto_id")
 
 @router.message()
 async def auto_send_id(message: Message):
-    # Faqat adminlar uchun
-    if message.from_user.id not in ADMIN_IDS:
+    # 1. Faqat o'sha maxsus yopiq guruhda ishlaydi
+    if message.chat.id != GROUP_ID:
         return
 
-    # Botning o'z xabarlariga javob bermaymiz
+    # 2. Kim yuborayotganini tekshiramiz (guruh profili yoki shaxsiy admin)
+    is_personal_admin = message.from_user.id in ADMIN_IDS
+    is_group_profile = message.sender_chat is not None and message.sender_chat.id == GROUP_ID
+
+    # Agar ikkalasi ham bo'lmasa, e'tiborsiz qoldiramiz
+    if not is_personal_admin and not is_group_profile:
+        return
+
+    # 3. Botning o'z xabarlariga javob bermaymiz (cheksiz aylanishni oldini olish)
     if message.from_user.id == message.bot.id:
         return
+    if message.sender_chat and message.sender_chat.id == message.bot.id:
+        return
 
-    # Matn "/" bilan boshlansa (buyruq bo'lsa), e'tiborsiz qoldiramiz
+    # 4. Buyruqlarga ("/" bilan boshlangani) javob bermaymiz
     if message.text and message.text.startswith("/"):
         return
 
-    # ⬇️ MANA SHU YERGA YOZASIZ ⬇️
-    # Faqat bitta guruh uchun ishlatish (agar boshqa guruhda ishlamasin desangiz):
-    if message.chat.id != GROUP_ID:
-        return
-    # ⬆️ MANA SHU YERGA YOZASIZ ⬆️
-
+    # 5. ID larni qaytaramiz
     await message.reply(
         f"✅ Chat ID: `{message.chat.id}`\n"
-        f"✅ Message ID: `{message.message_id}`",
+        f"✅ Message ID: `{message.message_id}`\n"
+        f"✅ Sender: `{message.from_user.id}`",
         parse_mode="Markdown"
     )
