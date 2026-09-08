@@ -21,8 +21,8 @@ UZB_MEDIA = {
         },
         
         # Yana yangi film qo'shish uchun shu yerda davom eting (masalan Spiderman)
-    "title": "O'rgimchak odam [1,2,3,4]",
         {
+            "title": "O'rgimchak odam [1,2,3,4]",
             "episodes": [
                 {"chat_id": -1003863295329, "message_id": 108, "title": "[1] Uyga qaytish (2017)"},
                 {"chat_id": -1003863295329, "message_id": 110, "title": "[2] Uydan uzoqda (2019)"},
