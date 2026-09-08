@@ -31,17 +31,32 @@ class MediaStates(StatesGroup):
 def _source(lang: str) -> dict:
     return UZB_MEDIA if lang == "uz" else ENG_MEDIA
 
-def _total_pages(total: int) -> int:
-    return max(1, -(-total // PAGE_SIZE))
-
 def _get_items(lang: str, category: str) -> list:
     return _source(lang).get(category, [])
 
+# Helper funksiya: copy_message ni thread bilan chaqiradi
+async def _copy_to_user(bot, chat_id, from_chat_id, message_id, thread_id=None):
+    try:
+        if thread_id:
+            await bot.copy_message(
+                chat_id=chat_id,
+                from_chat_id=from_chat_id,
+                message_id=message_id,
+                message_thread_id=thread_id
+            )
+        else:
+            await bot.copy_message(
+                chat_id=chat_id,
+                from_chat_id=from_chat_id,
+                message_id=message_id
+            )
+    except Exception as e:
+        # Xatolikni logga yozish (yoki foydalanuvchiga ko'rsatish)
+        print(f"Xatolik: {e}")
 
-# ----------------- YANGI UNIVERSAL FUNKSIYALAR -----------------
+# ----------------- RO'YXAT VA QISMLARNI KO'RSATISH -----------------
 
 def render_list(lang: str, category: str, page: int):
-    """Oddiy va qismli (episodes) elementlarni bitta ro'yxatda ko'rsatadi."""
     items = _get_items(lang, category)
     total = len(items)
     start = page * PAGE_SIZE
@@ -62,12 +77,10 @@ def render_list(lang: str, category: str, page: int):
         kb.row(*[InlineKeyboardButton(text=t, callback_data=c) for t, c in nav_row])
 
     kb.row(InlineKeyboardButton(text="🔙 Orqaga", callback_data=f"lb:{lang}"))
-    text = f"📋 Ro'yxat ({page + 1}/{_total_pages(total)}):"
+    text = f"📋 Ro'yxat ({page + 1}/{max(1, -(-total // PAGE_SIZE))}):"
     return text, kb.as_markup()
 
-
 def render_episodes(lang: str, category: str, item_idx: int, page: int):
-    """Tanlangan elementning ichki qismlarini (episodes) ko'rsatadi."""
     items = _get_items(lang, category)
     item = items[item_idx]
     episodes = item.get("episodes", [])
@@ -78,8 +91,7 @@ def render_episodes(lang: str, category: str, item_idx: int, page: int):
 
     kb = InlineKeyboardBuilder()
     for ep_idx, ep in enumerate(page_items, start=start):
-        label = ep.get("title") or f"{ep_idx + 1}-qism"
-        kb.button(text=label, callback_data=f"ei:{lang}:{category}:{item_idx}:{ep_idx}")
+        kb.button(text=ep.get("title") or f"{ep_idx + 1}-qism", callback_data=f"ei:{lang}:{category}:{item_idx}:{ep_idx}")
     kb.adjust(1)
 
     nav_row = []
@@ -91,23 +103,20 @@ def render_episodes(lang: str, category: str, item_idx: int, page: int):
         kb.row(*[InlineKeyboardButton(text=t, callback_data=c) for t, c in nav_row])
 
     kb.row(InlineKeyboardButton(text="🔙 Orqaga", callback_data=f"elb:{lang}:{category}:{item_idx}"))
-    text = f"🎬 {item['title']} — qismlar ({page + 1}/{_total_pages(total)}):"
+    text = f"🎬 {item['title']} — qismlar ({page + 1}/{max(1, -(-total // PAGE_SIZE))}):"
     return text, kb.as_markup()
 
-
-# ----------------- REPLY KLATURASI (FSM) -----------------
+# ----------------- REPLY KLATURASI -----------------
 
 @router.message(F.text == BTN_MEDIA)
 async def open_media_menu(message: Message, state: FSMContext) -> None:
     await state.set_state(MediaStates.choosing_language)
     await message.answer("🌐 Tilni tanlang:", reply_markup=media_lang_kb())
 
-
 @router.message(MediaStates.choosing_language, F.text == BTN_BACK)
 async def back_from_media_lang(message: Message, state: FSMContext) -> None:
     await state.clear()
     await message.answer("🔙 Asosiy menyu", reply_markup=main_menu_kb())
-
 
 @router.message(MediaStates.choosing_language, F.text.in_({BTN_LANG_UZ, BTN_LANG_EN}))
 async def choose_media_language(message: Message, state: FSMContext) -> None:
@@ -116,25 +125,22 @@ async def choose_media_language(message: Message, state: FSMContext) -> None:
     await state.set_state(MediaStates.choosing_category)
     await message.answer("🎬 Kategoriyani tanlang:", reply_markup=media_category_kb(lang))
 
-
 @router.message(MediaStates.choosing_category, F.text == BTN_BACK)
 async def back_from_media_category(message: Message, state: FSMContext) -> None:
     await state.set_state(MediaStates.choosing_language)
     await message.answer("🌐 Tilni tanlang:", reply_markup=media_lang_kb())
 
-
 @router.message(MediaStates.choosing_category, F.text.in_({BTN_MEDIA_MOVIES, BTN_MEDIA_CARTOONS, BTN_MEDIA_ANIME, BTN_MEDIA_MOVIES_EN, BTN_MEDIA_CARTOONS_EN, BTN_MEDIA_ANIME_EN}))
 async def choose_media_category(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
     lang = data.get("media_lang", "uz")
-    
-    # Category ni topish
+
     button_map = {
         BTN_MEDIA_MOVIES: "movies", BTN_MEDIA_CARTOONS: "cartoons", BTN_MEDIA_ANIME: "anime",
         BTN_MEDIA_MOVIES_EN: "movies", BTN_MEDIA_CARTOONS_EN: "cartoons", BTN_MEDIA_ANIME_EN: "anime"
     }
     category = button_map[message.text]
-    
+
     items = _get_items(lang, category)
     if not items:
         await message.answer("😔 Hozircha bu kategoriyada kontent mavjud emas.")
@@ -143,8 +149,7 @@ async def choose_media_category(message: Message, state: FSMContext) -> None:
     text, markup = render_list(lang, category, 0)
     await message.answer(text, reply_markup=markup)
 
-
-# ----------------- UNIVERSAL CALLBACK HANDLERLAR -----------------
+# ----------------- CALLBACK HANDLERLAR -----------------
 
 @router.callback_query(F.data.startswith("li:"))
 async def item_selected(callback: CallbackQuery):
@@ -163,14 +168,16 @@ async def item_selected(callback: CallbackQuery):
         text, markup = render_episodes(lang, category, idx, 0)
         await callback.message.edit_text(text, reply_markup=markup)
     else:
-        # Oddiy film bo'lsa, darhol yuboramiz
-        await callback.bot.copy_message(
+        # Oddiy film bo'lsa, topicga yuboramiz
+        thread_id = item.get("message_thread_id")
+        await _copy_to_user(
+            bot=callback.bot,
             chat_id=callback.message.chat.id,
             from_chat_id=item["chat_id"],
             message_id=item["message_id"],
+            thread_id=thread_id
         )
     await callback.answer()
-
 
 @router.callback_query(F.data.startswith("ei:"))
 async def episode_selected(callback: CallbackQuery):
@@ -179,14 +186,16 @@ async def episode_selected(callback: CallbackQuery):
     items = _get_items(lang, category)
     item = items[idx]
     ep = item["episodes"][ep_idx]
-    
-    await callback.bot.copy_message(
+
+    thread_id = ep.get("message_thread_id") or item.get("message_thread_id")
+    await _copy_to_user(
+        bot=callback.bot,
         chat_id=callback.message.chat.id,
         from_chat_id=ep["chat_id"],
         message_id=ep["message_id"],
+        thread_id=thread_id
     )
     await callback.answer()
-
 
 @router.callback_query(F.data.startswith("lp:"))
 async def list_page(callback: CallbackQuery):
@@ -195,7 +204,6 @@ async def list_page(callback: CallbackQuery):
     await callback.message.edit_text(text, reply_markup=markup)
     await callback.answer()
 
-
 @router.callback_query(F.data.startswith("ep:"))
 async def episode_page(callback: CallbackQuery):
     _, lang, category, idx, page = callback.data.split(":")
@@ -203,15 +211,12 @@ async def episode_page(callback: CallbackQuery):
     await callback.message.edit_text(text, reply_markup=markup)
     await callback.answer()
 
-
 @router.callback_query(F.data.startswith("elb:"))
 async def back_to_list(callback: CallbackQuery):
     _, lang, category, idx = callback.data.split(":")
-    # Orqaga ro'yxatga qaytamiz
     text, markup = render_list(lang, category, 0)
     await callback.message.edit_text(text, reply_markup=markup)
     await callback.answer()
-
 
 @router.callback_query(F.data.startswith("lb:"))
 async def back_to_category(callback: CallbackQuery, state: FSMContext):
