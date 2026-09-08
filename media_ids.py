@@ -23,7 +23,7 @@ UZB_MEDIA = {
         {
             "title": "Temir Odam [1,2,3]",
             "episodes": [
-                {"chat_id": ch, "message_thread_id": UZB_MOVIE, "message_id": 25, "title": "[1] Temir Odam 1 (2008)"},
+                {"chat_id": ch, "message_thread_id": UZB_MOVIE, "message_id": 47, "title": "[1] Temir Odam 1 (2008)"},
                 {"chat_id": ch, "message_thread_id": UZB_MOVIE, "message_id": 27, "title": "[2] Temir Odam 2 (2010)"},
                 {"chat_id": ch, "message_thread_id": UZB_MOVIE, "message_id": 29, "title": "[3] Temir Odam 3 (2013)"},
             ]
