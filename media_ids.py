@@ -16,9 +16,9 @@ UZB_MEDIA = {
             "episodes": [
                 {"chat_id": -1003863295329, "message_id": 102, "title": "[1] Temir Odam 1 (2008)"},
                 {"chat_id": -1003863295329, "message_id": 104, "title": "[2] Temir Odam 2 (2010)"},
-                {"chat_id": -1003863295329, "message_id": 106, "title": "[3] Temir Odam 3 (2013)"}
+                {"chat_id": -1003863295329, "message_id": 106, "title": "[3] Temir Odam 3 (2013)"},
             ]
-        }
+        },
         
         # Yana yangi film qo'shish uchun shu yerda davom eting (masalan Spiderman)
     "title": "O'rgimchak odam [1,2,3,4]",
@@ -27,9 +27,9 @@ UZB_MEDIA = {
                 {"chat_id": -1003863295329, "message_id": 108, "title": "[1] Uyga qaytish (2017)"},
                 {"chat_id": -1003863295329, "message_id": 110, "title": "[2] Uydan uzoqda (2019)"},
                 {"chat_id": -1003863295329, "message_id": 112, "title": "[3] Uyga yo'l yo'q (2021)"},
-                {"chat_id": -1003863295329, "message_id": 114, "title": "[4] Yangi kun (2026)"}
+                {"chat_id": -1003863295329, "message_id": 114, "title": "[4] Yangi kun (2026)"},
             ]
-        }
+        },
         {
             "title": "Men Grutman [1,2,3,4,5]",
             "episodes": [
