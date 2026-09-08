@@ -7,25 +7,21 @@
 
 UZB_MEDIA = {
     "movies": [
-        {"chat_id": -1003863295329, "message_id": 1, "title": "Film nomi 1"},
+        {"chat_id": -1003863295329, "message_id": 104, "title": "Film nomi 1"},
         {
-            "title": "Marvel filmlari",
-            "Qahramonlar": [
-                {
-                    "title": "Temir odam",
-                    "Temir odam": [
-                        {"chat_id": -1003863295329, "message_id": 102, "title": "Temir Odam (2008)"},
-                        {"chat_id": -1003863295329, "message_id": 104, "title": "Temir Odam (2011)"},
-                    ]
-                }
-
+            "title": "Temir odam",
+            "Temir odam": [
+                {"chat_id": -1003863295329, "message_id": 102, "title": "Temir Odam (2008)"},
+                {"chat_id": -1003863295329, "message_id": 104, "title": "Temir Odam (2011)"},
             ],
         },
         
     ],
+
     "cartoons": [
         {"chat_id": -1003863295329, "message_id": 2, "title": "Multfilm nomi 1"},
     ],
+    
     "anime": [
         {
             "title": "Anime nomi 1",
