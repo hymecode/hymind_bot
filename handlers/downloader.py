@@ -44,12 +44,26 @@ async def download_media(callback_query: CallbackQuery, state: FSMContext):
 
     ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
 
+    # 🔥 YouTube bot-deteksiyasini chetlab o'tish uchun:
+    # - player_client: tv, mweb, web (birinchi ishlaydiganini sinab ko'radi)
+    # - http_headers: User-Agent qo'shamiz (brauzer kabi ko'rinish)
+    # - cookies: agar "cookies.txt" fayli mavjud bo'lsa, undan foydalanamiz (ixtiyoriy)
     ydl_opts = {
         "outtmpl": "./downloads/%(title)s.%(ext)s",
         "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
         "noplaylist": True,
         "quiet": True,
         "ffmpeg_location": ffmpeg_path,
+        "extractor_args": {
+            "youtube": {
+                "player_client": ["tv", "mweb", "web"]
+            }
+        },
+        "http_headers": {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        },
+        # Agar loyihada "cookies.txt" bo'lsa, avtomatik qo'llaymiz
+        "cookiefile": "cookies.txt" if os.path.exists("cookies.txt") else None,
     }
 
     if choice == "audio":
