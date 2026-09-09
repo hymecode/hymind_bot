@@ -1,5 +1,6 @@
 aiogram==3.19.0
 deep-translator==1.11.4
 python-dotenv==1.0.0
-yt-dlp==2025.1.15
+yt-dlp>=2025.1.1
 imageio-ffmpeg
+yt-dlp-get-pot-rustypipe

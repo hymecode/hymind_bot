@@ -7,7 +7,7 @@ from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 
 from config import BOT_TOKEN
-from handlers import translate, tests, media, support, start, auto_id, downloader
+from handlers import downloads, translate, tests, media, support, start
 
 async def main() -> None:
     logging.basicConfig(level=logging.INFO)
@@ -15,12 +15,13 @@ async def main() -> None:
     bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp = Dispatcher(storage=MemoryStorage())
 
+    # MUHIM: downloads.router eng OLDIN turadi, chunki u global handler
+    dp.include_router(downloads.router)
     dp.include_router(translate.router)
     dp.include_router(tests.router)
     dp.include_router(media.router)
     dp.include_router(support.router)
     dp.include_router(start.router)
-    dp.include_router(downloader.router)  # 🚀 QO'SHILDI!
 
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
