@@ -46,21 +46,29 @@ def _total_pages(total: int) -> int:
     return max(1, -(-total // PAGE_SIZE))
 
 
-# ---------------- Forward orqali yuborish (xatosiz) ----------------
-
+# ---------------- YUBORISH FUNKSIYASI (Copy - Forwarded yozuvi YO'Q) ----------------
 
 async def _send_media(bot, chat_id: int, from_chat_id: int, message_id: int):
-    """Xabarni forward_message orqali foydalanuvchiga yuboradi."""
+    """Xabarni copy_message orqali yuboradi - 'Forwarded' yozuvi chiqmaydi."""
     try:
-        await bot.forward_message(
+        # Avval copy_message bilan yuboramiz (bu yerda "Forwarded" yozuvi bo'lmaydi)
+        await bot.copy_message(
             chat_id=chat_id,
             from_chat_id=from_chat_id,
-            message_id=message_id,
+            message_id=message_id
         )
-    except Exception as e:
-        print(f"FORWARD XATOSI: {e}")
-        # Xatolikni foydalanuvchiga ko'rsatish uchun qayta chiqaramiz (ixtiyoriy)
-        raise e
+    except Exception:
+        # Agar copy_message xato bersa (masalan, fayl 50MB dan katta bo'lsa),
+        # forward_message ga o'tamiz (lekin unda "Forwarded" yozuvi bo'ladi)
+        try:
+            await bot.forward_message(
+                chat_id=chat_id,
+                from_chat_id=from_chat_id,
+                message_id=message_id
+            )
+        except Exception as e:
+            # Har ikkalasi ham ishlamasa, xatolikni ko'rsatamiz
+            raise e
 
 
 # ---------------- Render funksiyalari ----------------
@@ -94,7 +102,7 @@ def render_list(lang: str, category: str, page: int):
 
 
 def render_episodes(lang: str, category: str, item_idx: int, page: int):
-    """Tanlangan film/serialning qismlari (episodes) uchun sahifalangan klaviatura."""
+    """Tanlangan film/serialning qismlari uchun sahifalangan klaviatura."""
     items = _get_items(lang, category)
     item = items[item_idx]
     episodes = item.get("episodes", [])
@@ -201,7 +209,7 @@ async def item_selected(callback: CallbackQuery):
         await callback.answer()
         return
 
-    # Oddiy film bo'lsa, forward orqali yuboramiz
+    # Oddiy film bo'lsa, copy_message orqali yuboramiz (forwarded yozuvi yo'q!)
     try:
         await _send_media(
             bot=callback.bot,
